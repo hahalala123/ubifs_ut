@@ -33,7 +33,7 @@ Usage:
 
 Signed-off-by: Candidate <candidate@example.com>
 
---- /dev/null	2026-09-21 18:57:57.000000000 +0800
+--- /dev/null	2026-09-21 19:08:44.000000000 +0800
 +++ b/tools/testing/ubifs/include/ubifs.h	2026-09-21 18:54:20.735739600 +0800
 @@ -0,0 +1,299 @@
 +/*
@@ -336,7 +336,7 @@ Signed-off-by: Candidate <candidate@example.com>
 +
 +#endif /* __UBIFS_USERSPACE_STUB_H__ */
 
---- /dev/null	2026-09-21 18:57:57.000000000 +0800
+--- /dev/null	2026-09-21 19:08:44.000000000 +0800
 +++ b/tools/testing/ubifs/src/scan.c	2026-09-21 16:28:02.677209600 +0800
 @@ -0,0 +1,366 @@
 +// SPDX-License-Identifier: GPL-2.0-only
@@ -706,7 +706,7 @@ Signed-off-by: Candidate <candidate@example.com>
 +	kfree(sleb);
 +}
 
---- /dev/null	2026-09-21 18:57:57.000000000 +0800
+--- /dev/null	2026-09-21 19:08:44.000000000 +0800
 +++ b/tools/testing/ubifs/tests/ut_support.h	2026-09-21 16:28:28.543341500 +0800
 @@ -0,0 +1,57 @@
 +/*
@@ -767,7 +767,7 @@ Signed-off-by: Candidate <candidate@example.com>
 +
 +#endif /* __UT_SUPPORT_H__ */
 
---- /dev/null	2026-09-21 18:57:57.000000000 +0800
+--- /dev/null	2026-09-21 19:08:44.000000000 +0800
 +++ b/tools/testing/ubifs/tests/ut_support.c	2026-09-21 18:54:39.543852000 +0800
 @@ -0,0 +1,104 @@
 +/*
@@ -875,7 +875,7 @@ Signed-off-by: Candidate <candidate@example.com>
 +					   UBIFS_CH_SZ - 8));
 +}
 
---- /dev/null	2026-09-21 18:57:57.000000000 +0800
+--- /dev/null	2026-09-21 19:08:45.000000000 +0800
 +++ b/tools/testing/ubifs/tests/test_scan_a_node.c	2026-09-21 16:37:19.558580000 +0800
 @@ -0,0 +1,228 @@
 +/*
@@ -1107,7 +1107,7 @@ Signed-off-by: Candidate <candidate@example.com>
 +	return ut_failures ? 1 : 0;
 +}
 
---- /dev/null	2026-09-21 18:57:57.000000000 +0800
+--- /dev/null	2026-09-21 19:08:45.000000000 +0800
 +++ b/tools/testing/ubifs/Makefile	2026-09-21 18:54:47.544129600 +0800
 @@ -0,0 +1,70 @@
 +# SPDX-License-Identifier: GPL-2.0-only
@@ -1181,9 +1181,9 @@ Signed-off-by: Candidate <candidate@example.com>
 +
 +.PHONY: all test verify clean
 
---- /dev/null	2026-09-21 18:57:57.000000000 +0800
-+++ b/tools/testing/ubifs/README.md	2026-09-21 18:57:22.720051400 +0800
-@@ -0,0 +1,115 @@
+--- /dev/null	2026-09-21 19:08:45.000000000 +0800
++++ b/tools/testing/ubifs/README.md	2026-09-21 19:08:27.064724800 +0800
+@@ -0,0 +1,119 @@
 +# UBIFS User-space Unit Test Framework（面试题原型）
 +
 +让主线 `fs/ubifs/scan.c` 中的 **`ubifs_scan_a_node()`** 在不依赖开发板、
@@ -1217,6 +1217,10 @@ Signed-off-by: Candidate <candidate@example.com>
 +├── Makefile                 # make / make test / make verify
 +├── verify-kernel.sh         # 内核树端到端取证（clone→am→diff→test→基线哈希）
 +├── INTERVIEW.md             # 面试自述稿（讲解顺序 + 预埋 Q&A）
++├── draw_workflow.py         # 流程图生成脚本（matplotlib）
++├── docs/
++│   ├── UBIFS单元测试框架技术方案.md  # 完整设计文档（推导/架构/分析/验收）
++│   └── 工作流程示意图.png           # 工作流程图（draw_workflow.py 生成）
 +└── patches/                 # 生成好的内核 patch（新增文件，零侵入）
 +```
 +

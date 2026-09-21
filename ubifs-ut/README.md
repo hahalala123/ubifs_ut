@@ -31,6 +31,10 @@ ubifs-ut/
 ├── Makefile                 # make / make test / make verify
 ├── verify-kernel.sh         # 内核树端到端取证（clone→am→diff→test→基线哈希）
 ├── INTERVIEW.md             # 面试自述稿（讲解顺序 + 预埋 Q&A）
+├── draw_workflow.py         # 流程图生成脚本（matplotlib）
+├── docs/
+│   ├── UBIFS单元测试框架技术方案.md  # 完整设计文档（推导/架构/分析/验收）
+│   └── 工作流程示意图.png           # 工作流程图（draw_workflow.py 生成）
 └── patches/                 # 生成好的内核 patch（新增文件，零侵入）
 ```
 
