@@ -27,7 +27,9 @@ ubifs-ut/
 ├── tests/
 │   ├── ut_support.h/.c      # CRC32、check_node 桩、节点构造辅助、CHECK 宏
 │   └── test_scan_a_node.c   # 测试用例（pad node 校验为重点）
-├── Makefile
+├── Makefile                 # make / make test / make verify
+├── verify-kernel.sh         # 内核树端到端取证（clone→am→diff→test→基线哈希）
+├── INTERVIEW.md             # 面试自述稿（讲解顺序 + 预埋 Q&A）
 └── patches/                 # 生成好的内核 patch（新增文件，零侵入）
 ```
 
@@ -87,6 +89,15 @@ tools/tcc/tcc.exe -Iinclude -Itests src/scan.c tests/ut_support.c \
 git am patches/0001-ubifs-add-userspace-unit-test-framework.patch
 # 或: patch -p1 < patches/0001-ubifs-add-userspace-unit-test-framework.patch
 ```
+
+一条命令完成全部取证（浅克隆主线 → `git am` → 逐字节 diff → 树上
+`make test` → 打印基线 commit 哈希）：
+
+```sh
+./verify-kernel.sh          # 默认 ~/linux，可用 LINUX_DIR 指定路径
+```
+
+注意：请在 Linux 上运行；Windows 的 `core.autocrlf` 可能让逐字节 diff 误报。
 
 维护方式：每次要测新改动时，`cp fs/ubifs/scan.c src/scan.c` 后 `make test`。
 
