@@ -13,7 +13,10 @@
 #   make clean
 
 CC      ?= cc
-CFLAGS  ?= -std=gnu99 -Wall -Wextra -g
+# -Wno-unused-parameter / -Wno-sign-compare: the kernel's scan.c (compiled
+# verbatim, must stay byte-identical to fs/ubifs/scan.c) triggers these
+# under -Wextra; they are harmless for a user-space harness.
+CFLAGS  ?= -std=gnu99 -Wall -Wextra -Wno-unused-parameter -Wno-sign-compare -g
 CPPFLAGS += -Iinclude -Itests
 BUILD   := build
 BIN     := $(BUILD)/ubifs_ut

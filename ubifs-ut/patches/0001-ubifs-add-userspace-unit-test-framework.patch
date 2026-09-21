@@ -1,6 +1,6 @@
 From 0000000000000000000000000000000000000000 Mon Sep 17 00:00:00 2001
 From: Candidate <candidate@example.com>
-Date: Mon, 21 Sep 2026 16:30:00 +0800
+Date: Mon, 21 Sep 2026 19:00:00 +0800
 Subject: [PATCH] tools/testing/ubifs: add user-space unit test framework for scan.c
 
 Add a user-space unit-test framework for fs/ubifs so that changes to
@@ -20,7 +20,12 @@ cases for raw padding bytes, empty space, short buffers, corrupt
 header CRC and a plain valid node, and a ubifs_scan() integration
 test over a hand-built LEB image.
 
-Baseline: fs/ubifs/scan.c @ 69050f8d6d075dc01af7a5f2f550a8067510366f
+Verification: 22 assertions pass on x86 and aarch64; three injected
+regressions (alignment mask, boundary condition, padding byte
+comparison) are all caught by the suite ('make verify').
+
+Based-on: 93f51579e7df248780214094418f205253383cc5 (Linux 7.3-rc4)
+Tested-file: fs/ubifs/scan.c @ 69050f8d6d075dc01af7a5f2f550a8067510366f
 
 Usage:
   cp fs/ubifs/scan.c tools/testing/ubifs/src/scan.c
@@ -28,9 +33,9 @@ Usage:
 
 Signed-off-by: Candidate <candidate@example.com>
 
---- /dev/null	2026-09-21 16:38:24.000000000 +0800
-+++ b/tools/testing/ubifs/include/ubifs.h	2026-09-21 16:36:23.351070500 +0800
-@@ -0,0 +1,295 @@
+--- /dev/null	2026-09-21 18:57:57.000000000 +0800
++++ b/tools/testing/ubifs/include/ubifs.h	2026-09-21 18:54:20.735739600 +0800
+@@ -0,0 +1,299 @@
 +/*
 + * User-space stub of the kernel's fs/ubifs/ubifs.h + ubifs-media.h subset.
 + *
@@ -82,7 +87,7 @@ Signed-off-by: Candidate <candidate@example.com>
 +/* ------------------------------------------------------------------ */
 +/* Kernel primitives (minimal re-implementations)                      */
 +/* ------------------------------------------------------------------ */
-+#define min_t(t, a, b) ((a) < (b) ? (a) : (b))
++#define min_t(t, a, b) ((t)((a) < (b) ? (a) : (b)))
 +#define ALIGN(x, a)    (((x) + (a) - 1) & ~((a) - 1))
 +
 +#define GFP_NOFS 0
@@ -157,6 +162,8 @@ Signed-off-by: Candidate <candidate@example.com>
 +#define ubifs_dump_node(c, node, len) do { } while (0)
 +
 +/* Keys: not exercised by the scan tests, keep as inert placeholders */
++struct ubifs_info;
++
 +union ubifs_key {
 +	__u8 k[16];
 +	__u64 junk;
@@ -165,12 +172,14 @@ Signed-off-by: Candidate <candidate@example.com>
 +static inline void key_read(const struct ubifs_info *c, const void *from,
 +			    union ubifs_key *to)
 +{
++	(void)c;
 +	memcpy(to, from, sizeof(*to));
 +}
 +
 +static inline void invalid_key_init(const struct ubifs_info *c,
 +				    union ubifs_key *key)
 +{
++	(void)c;
 +	memset(key, 0, sizeof(*key));
 +}
 +
@@ -327,7 +336,7 @@ Signed-off-by: Candidate <candidate@example.com>
 +
 +#endif /* __UBIFS_USERSPACE_STUB_H__ */
 
---- /dev/null	2026-09-21 16:38:24.000000000 +0800
+--- /dev/null	2026-09-21 18:57:57.000000000 +0800
 +++ b/tools/testing/ubifs/src/scan.c	2026-09-21 16:28:02.677209600 +0800
 @@ -0,0 +1,366 @@
 +// SPDX-License-Identifier: GPL-2.0-only
@@ -697,7 +706,7 @@ Signed-off-by: Candidate <candidate@example.com>
 +	kfree(sleb);
 +}
 
---- /dev/null	2026-09-21 16:38:24.000000000 +0800
+--- /dev/null	2026-09-21 18:57:57.000000000 +0800
 +++ b/tools/testing/ubifs/tests/ut_support.h	2026-09-21 16:28:28.543341500 +0800
 @@ -0,0 +1,57 @@
 +/*
@@ -758,9 +767,9 @@ Signed-off-by: Candidate <candidate@example.com>
 +
 +#endif /* __UT_SUPPORT_H__ */
 
---- /dev/null	2026-09-21 16:38:24.000000000 +0800
-+++ b/tools/testing/ubifs/tests/ut_support.c	2026-09-21 16:29:26.937950300 +0800
-@@ -0,0 +1,100 @@
+--- /dev/null	2026-09-21 18:57:57.000000000 +0800
++++ b/tools/testing/ubifs/tests/ut_support.c	2026-09-21 18:54:39.543852000 +0800
+@@ -0,0 +1,104 @@
 +/*
 + * Test harness implementation. See ut_support.h for the contract.
 + */
@@ -813,12 +822,15 @@ Signed-off-by: Candidate <candidate@example.com>
 +		     int offs, int quiet, int must_chk)
 +{
 +	struct ubifs_ch *ch = buf;
-+	uint32_t crc, node_len;
++	uint32_t crc;
++	int node_len;
 +
-+	node_len = le32_to_cpu(ch->len);
++	(void)c; (void)lnum; (void)offs; (void)quiet; (void)must_chk;
++
++	node_len = (int)le32_to_cpu(ch->len);
 +
 +	/* Node must at least contain its own common header */
-+	if (node_len < UBIFS_CH_SZ || node_len > len)
++	if (node_len < (int)UBIFS_CH_SZ || node_len > len)
 +		return 1;
 +
 +	/* Header CRC covers everything after magic+crc (starts at sqnum) */
@@ -833,6 +845,7 @@ Signed-off-by: Candidate <candidate@example.com>
 +int ubifs_leb_read(const struct ubifs_info *c, int lnum, void *buf, int offs,
 +		   int len, int check_crc)
 +{
++	(void)c; (void)lnum; (void)buf; (void)offs; (void)len; (void)check_crc;
 +	return 0;
 +}
 +
@@ -862,7 +875,7 @@ Signed-off-by: Candidate <candidate@example.com>
 +					   UBIFS_CH_SZ - 8));
 +}
 
---- /dev/null	2026-09-21 16:38:24.000000000 +0800
+--- /dev/null	2026-09-21 18:57:57.000000000 +0800
 +++ b/tools/testing/ubifs/tests/test_scan_a_node.c	2026-09-21 16:37:19.558580000 +0800
 @@ -0,0 +1,228 @@
 +/*
@@ -1094,9 +1107,9 @@ Signed-off-by: Candidate <candidate@example.com>
 +	return ut_failures ? 1 : 0;
 +}
 
---- /dev/null	2026-09-21 16:38:24.000000000 +0800
-+++ b/tools/testing/ubifs/Makefile	2026-09-21 16:30:53.889305400 +0800
-@@ -0,0 +1,39 @@
+--- /dev/null	2026-09-21 18:57:57.000000000 +0800
++++ b/tools/testing/ubifs/Makefile	2026-09-21 18:54:47.544129600 +0800
+@@ -0,0 +1,70 @@
 +# SPDX-License-Identifier: GPL-2.0-only
 +#
 +# User-space unit-test framework for fs/ubifs.
@@ -1104,42 +1117,73 @@ Signed-off-by: Candidate <candidate@example.com>
 +# The *unmodified* mainline fs/ubifs/scan.c is compiled against a small
 +# user-space stub of ubifs.h, so ubifs_scan_a_node() can be regression
 +# tested without flash hardware, an MTD simulator, or a VM.
++#
++# Usage:
++#   make        # build the test binary (build/ubifs_ut)
++#   make test   # build (if needed) and run the unit tests
++#   make verify # run tests + mutation checks (proves the tests catch regressions)
++#   make clean
 +
 +CC      ?= cc
-+CFLAGS  ?= -std=gnu99 -Wall -Wextra -g -Iinclude
++# -Wno-unused-parameter / -Wno-sign-compare: the kernel's scan.c (compiled
++# verbatim, must stay byte-identical to fs/ubifs/scan.c) triggers these
++# under -Wextra; they are harmless for a user-space harness.
++CFLAGS  ?= -std=gnu99 -Wall -Wextra -Wno-unused-parameter -Wno-sign-compare -g
++CPPFLAGS += -Iinclude -Itests
 +BUILD   := build
 +BIN     := $(BUILD)/ubifs_ut
 +
 +OBJS := $(BUILD)/scan.o $(BUILD)/ut_support.o $(BUILD)/test_scan_a_node.o
 +
++# 'make' alone builds the binary; 'make test' is the entry most people want.
++.DEFAULT_GOAL := all
 +all: $(BIN)
 +
 +$(BUILD):
 +	mkdir -p $(BUILD)
 +
 +$(BUILD)/scan.o: src/scan.c include/ubifs.h | $(BUILD)
-+	$(CC) $(CFLAGS) -c $< -o $@
++	$(CC) $(CFLAGS) $(CPPFLAGS) -c $< -o $@
 +
 +$(BUILD)/ut_support.o: tests/ut_support.c tests/ut_support.h include/ubifs.h | $(BUILD)
-+	$(CC) $(CFLAGS) -Itests -c $< -o $@
++	$(CC) $(CFLAGS) $(CPPFLAGS) -c $< -o $@
 +
 +$(BUILD)/test_scan_a_node.o: tests/test_scan_a_node.c tests/ut_support.h include/ubifs.h | $(BUILD)
-+	$(CC) $(CFLAGS) -Itests -c $< -o $@
++	$(CC) $(CFLAGS) $(CPPFLAGS) -c $< -o $@
 +
 +$(BIN): $(OBJS)
 +	$(CC) $(CFLAGS) $(OBJS) -o $@
 +
 +test: $(BIN)
-+	./$(BIN)
++	./$(BIN) && echo "PASS: all tests passed" || { echo "FAIL: tests failed"; exit 1; }
++
++# Mutation testing: inject three typical regressions into a copy of the
++# code under test and check that the test suite catches every one of them.
++verify: $(BIN) test
++	@fail=0; \
++	for m in 's/(node_len + pad_len) & 7/(node_len + pad_len) \& 3/' \
++	         's/offs + node_len + pad_len > c->leb_size/offs + node_len + pad_len >= c->leb_size/' \
++	         's/\*p++ == UBIFS_PADDING_BYTE/*p++ != UBIFS_PADDING_BYTE/'; do \
++		sed "$$m" src/scan.c > $(BUILD)/scan_mutant.c; \
++		if $(CC) $(CFLAGS) $(CPPFLAGS) $(BUILD)/scan_mutant.c tests/ut_support.c \
++		    tests/test_scan_a_node.c -o $(BUILD)/mutant 2>/dev/null \
++		    && ./$(BUILD)/mutant >/dev/null 2>&1; then \
++			echo "MUTANT NOT CAUGHT: $$m"; fail=1; \
++		else \
++			echo "mutant caught: $$m"; \
++		fi; \
++	done; \
++	[ $$fail -eq 0 ] && echo "PASS: all mutants caught by the test suite" \
++			 || { echo "FAIL: at least one mutant survived"; exit 1; }
 +
 +clean:
 +	rm -rf $(BUILD)
 +
-+.PHONY: all test clean
++.PHONY: all test verify clean
 
---- /dev/null	2026-09-21 16:38:24.000000000 +0800
-+++ b/tools/testing/ubifs/README.md	2026-09-21 16:31:27.916313200 +0800
-@@ -0,0 +1,94 @@
+--- /dev/null	2026-09-21 18:57:57.000000000 +0800
++++ b/tools/testing/ubifs/README.md	2026-09-21 18:57:22.720051400 +0800
+@@ -0,0 +1,115 @@
 +# UBIFS User-space Unit Test Framework（面试题原型）
 +
 +让主线 `fs/ubifs/scan.c` 中的 **`ubifs_scan_a_node()`** 在不依赖开发板、
@@ -1148,7 +1192,8 @@ Signed-off-by: Candidate <candidate@example.com>
 +## 设计要点
 +
 +- **被测代码零修改**：`src/scan.c` 是主线源码原样拷贝
-+  （基线：`fs/ubifs/scan.c @ 69050f8d6d075dc01af7a5f2f550a8067510366f`），
++  （基线：树 `93f51579e7df` / Linux 7.3-rc4；文件
++  `fs/ubifs/scan.c @ 69050f8d6d075dc01af7a5f2f550a8067510366f`），
 +  一行未改。改了几行内核代码后，只需重新拷贝该文件并 `make test`，
 +  即可快速验证行为是否回归——这正是面试题要求解决的问题。
 +- **桩头文件** `include/ubifs.h`：用用户态实现替代内核基础设施
@@ -1169,18 +1214,27 @@ Signed-off-by: Candidate <candidate@example.com>
 +├── tests/
 +│   ├── ut_support.h/.c      # CRC32、check_node 桩、节点构造辅助、CHECK 宏
 +│   └── test_scan_a_node.c   # 测试用例（pad node 校验为重点）
-+├── Makefile
++├── Makefile                 # make / make test / make verify
++├── verify-kernel.sh         # 内核树端到端取证（clone→am→diff→test→基线哈希）
++├── INTERVIEW.md             # 面试自述稿（讲解顺序 + 预埋 Q&A）
 +└── patches/                 # 生成好的内核 patch（新增文件，零侵入）
 +```
 +
 +## 运行
 +
 +```sh
-+make test
-+# 输出: ubifs_scan_a_node: NN checks, 0 failures
++make          # 编译测试二进制（build/ubifs_ut）
++make test     # 编译（如需要）并运行测试
++# 输出: ubifs_scan_a_node: 22 checks, 0 failures
++#       PASS: all tests passed
++
++make verify   # 可选：再注入 3 个变异，验证测试确实能检出回归
++# 期望: 3 行 "mutant caught: ..." + "PASS: all mutants caught"
 +```
 +
-+本机 Windows 无 gcc 时，可用便携 TinyCC：
++已做变异验证（mutation check）：对 `src/scan.c` 分别注入三类典型回归
++（对齐掩码 `&7→&3`、边界条件 `>→>=`、padding 字节比较 `==→!=`），
++测试均能在 1 秒内准确检出并失败退出。本机 Windows 无 gcc 时，可用便携 TinyCC：
 +
 +```sh
 +tools/tcc/tcc.exe -Iinclude -Itests src/scan.c tests/ut_support.c \
@@ -1198,6 +1252,8 @@ Signed-off-by: Candidate <candidate@example.com>
 +| `test_pad_node_overruns_leb` | `offs + node_len + pad_len > leb_size` |
 +| `test_pad_node_negative_pad_len` | `pad_len` 解释为负（最高位置位） |
 +| `test_pad_node_misaligned_total` | `(node_len + pad_len) & 7` 未 8 字节对齐 |
++| `test_pad_node_36_bytes_is_misaligned` | 36 字节总长度：4 对齐但非 8 对齐，区分 `&7` 与弱校验 |
++| `test_pad_node_ends_exactly_at_leb_end` | 边界：`offs+node_len+pad_len == leb_size` 必须接受（检查是 `>` 不是 `>=`） |
 +
 +其它分支（保证函数整体可回归）：
 +
@@ -1220,6 +1276,15 @@ Signed-off-by: Candidate <candidate@example.com>
 +git am patches/0001-ubifs-add-userspace-unit-test-framework.patch
 +# 或: patch -p1 < patches/0001-ubifs-add-userspace-unit-test-framework.patch
 +```
++
++一条命令完成全部取证（浅克隆主线 → `git am` → 逐字节 diff → 树上
++`make test` → 打印基线 commit 哈希）：
++
++```sh
++./verify-kernel.sh          # 默认 ~/linux，可用 LINUX_DIR 指定路径
++```
++
++注意：请在 Linux 上运行；Windows 的 `core.autocrlf` 可能让逐字节 diff 误报。
 +
 +维护方式：每次要测新改动时，`cp fs/ubifs/scan.c src/scan.c` 后 `make test`。
 +

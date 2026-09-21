@@ -49,7 +49,7 @@ typedef uint64_t __le64;
 /* ------------------------------------------------------------------ */
 /* Kernel primitives (minimal re-implementations)                      */
 /* ------------------------------------------------------------------ */
-#define min_t(t, a, b) ((a) < (b) ? (a) : (b))
+#define min_t(t, a, b) ((t)((a) < (b) ? (a) : (b)))
 #define ALIGN(x, a)    (((x) + (a) - 1) & ~((a) - 1))
 
 #define GFP_NOFS 0
@@ -124,6 +124,8 @@ static inline int list_empty(const struct list_head *head)
 #define ubifs_dump_node(c, node, len) do { } while (0)
 
 /* Keys: not exercised by the scan tests, keep as inert placeholders */
+struct ubifs_info;
+
 union ubifs_key {
 	__u8 k[16];
 	__u64 junk;
@@ -132,12 +134,14 @@ union ubifs_key {
 static inline void key_read(const struct ubifs_info *c, const void *from,
 			    union ubifs_key *to)
 {
+	(void)c;
 	memcpy(to, from, sizeof(*to));
 }
 
 static inline void invalid_key_init(const struct ubifs_info *c,
 				    union ubifs_key *key)
 {
+	(void)c;
 	memset(key, 0, sizeof(*key));
 }
 

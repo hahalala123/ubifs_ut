@@ -50,12 +50,15 @@ int ubifs_check_node(const struct ubifs_info *c, void *buf, int len, int lnum,
 		     int offs, int quiet, int must_chk)
 {
 	struct ubifs_ch *ch = buf;
-	uint32_t crc, node_len;
+	uint32_t crc;
+	int node_len;
 
-	node_len = le32_to_cpu(ch->len);
+	(void)c; (void)lnum; (void)offs; (void)quiet; (void)must_chk;
+
+	node_len = (int)le32_to_cpu(ch->len);
 
 	/* Node must at least contain its own common header */
-	if (node_len < UBIFS_CH_SZ || node_len > len)
+	if (node_len < (int)UBIFS_CH_SZ || node_len > len)
 		return 1;
 
 	/* Header CRC covers everything after magic+crc (starts at sqnum) */
@@ -70,6 +73,7 @@ int ubifs_check_node(const struct ubifs_info *c, void *buf, int len, int lnum,
 int ubifs_leb_read(const struct ubifs_info *c, int lnum, void *buf, int offs,
 		   int len, int check_crc)
 {
+	(void)c; (void)lnum; (void)buf; (void)offs; (void)len; (void)check_crc;
 	return 0;
 }
 
